@@ -4,6 +4,7 @@ import env from '#start/env'
 
 import puppeteer from 'puppeteer'
 import axios, { AxiosError } from 'axios'
+import SummarizerJob, { SummarizerJobStatus } from '#models/summarizer_job'
 
 function splitContentIntoChunks(content: string, maxTokens: number): string[] {
   const chunks: string[] = []
@@ -19,8 +20,10 @@ function splitContentIntoChunks(content: string, maxTokens: number): string[] {
   return chunks
 }
 
-export default class BasicExample extends BaseJob {
-  async perform(url: string) {
+export default class WebpageCrawler extends BaseJob {
+  async perform(url: string, id: number) {
+    const summarizerJob = await SummarizerJob.findOrFail(id)
+
     const browser = await puppeteer.launch()
     const page = await browser.newPage()
 
@@ -71,14 +74,12 @@ export default class BasicExample extends BaseJob {
 
       const summary = chunkSummaryResponse.data.choices[0].message.content.trim()
 
-      console.log(summary)
-      // TODO: Store final summary in the database
+      summarizerJob.status = SummarizerJobStatus.COMPLETED
+      summarizerJob.summary = summary
+      await summarizerJob.save()
     } catch (error) {
-      if (error instanceof AxiosError) {
-        console.log(error.response.data)
-      } else {
-        console.log(error)
-      }
+      summarizerJob.status = SummarizerJobStatus.FAILED
+      await summarizerJob.save()
 
       await browser.close()
     }
