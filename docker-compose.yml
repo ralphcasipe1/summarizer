@@ -1,0 +1,24 @@
+version: '3.8'
+
+services:
+  summarizer:
+    image: postgres:13.2
+    ports:
+      - '5432:5432'
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: password
+    volumes:
+      - db:/var/lib/postgresql/data
+
+  redis:
+    image: redis:7.0.11-bullseye
+    command: redis-server --maxmemory-policy noeviction
+    ports:
+      - 6379:6379
+    environment:
+      ALLOW_EMPTY_PASSWORD: yes
+
+volumes:
+  db:
+    driver: local
