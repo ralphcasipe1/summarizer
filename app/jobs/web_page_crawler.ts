@@ -1,15 +1,15 @@
+import openapi from 'openai'
+import puppeteer from 'puppeteer'
+
 import { BaseJob } from 'adonis-resque'
 
-import env from '#start/env'
-
-import puppeteer from 'puppeteer'
-import axios, { AxiosError } from 'axios'
+import app from '@adonisjs/core/services/app'
 import SummarizerJob, { SummarizerJobStatus } from '#models/summarizer_job'
 
 function splitContentIntoChunks(content: string, maxTokens: number): string[] {
   const chunks: string[] = []
   let currentIndex = 0
-  const approximateTokenLength = maxTokens * 4 // Approximation: 4 characters per token
+  const approximateTokenLength = maxTokens * 4
 
   while (currentIndex < content.length) {
     const chunk = content.slice(currentIndex, currentIndex + approximateTokenLength)
@@ -20,68 +20,90 @@ function splitContentIntoChunks(content: string, maxTokens: number): string[] {
   return chunks
 }
 
+type OpenAIMessageBody = {
+  role:
+    | openapi.ChatCompletionSystemMessageParam['role']
+    | openapi.ChatCompletionUserMessageParam['role']
+  content: string
+}
+
+function messagesResolver(messageChunks: string[]): Array<OpenAIMessageBody> {
+  return [
+    {
+      role: 'system',
+      content: 'You are a helpful assistant',
+    },
+    ...messageChunks.map<OpenAIMessageBody>((messageChunk) => ({
+      role: 'user',
+      content: messageChunk,
+    })),
+    {
+      role: 'user',
+      content: 'Can you please refer to the previous summaries and make it shorter?',
+    },
+  ]
+}
+
+async function fetchContent(url: string) {
+  const browser = await puppeteer.launch()
+  const page = await browser.newPage()
+
+  try {
+    await page.goto(url, { waitUntil: 'load', timeout: 60_000 })
+
+    // Extract main text content, excluding unnecessary elements
+    const textContent = await page.evaluate(() => {
+      const elementsToRemove = ['script', 'style', 'header', 'footer', '.ads', 'nav']
+      elementsToRemove.forEach((selector) => {
+        document.querySelectorAll(selector).forEach((el) => el.remove())
+      })
+      return document.body.innerText
+    })
+
+    await browser.close()
+
+    const santizedContent = textContent.replace(/\s+/g, ' ').trim()
+
+    return santizedContent
+  } catch (error) {
+    await browser.close()
+    throw new Error('Unable to fetch and process the content.')
+  }
+}
+
 export default class WebpageCrawler extends BaseJob {
+  #model = 'gpt-3.5-turbo'
+
   async perform(url: string, id: number) {
     const summarizerJob = await SummarizerJob.findOrFail(id)
 
-    const browser = await puppeteer.launch()
-    const page = await browser.newPage()
-
     try {
-      await page.goto(url, { waitUntil: 'load', timeout: 60_000 })
+      const santizedContent = await fetchContent(url)
+      const maxTokens = 500
+      const chunkifiedContents = splitContentIntoChunks(santizedContent, maxTokens)
+      const messages = messagesResolver(chunkifiedContents)
 
-      // Extract main text content, excluding unnecessary elements
-      const textContent = await page.evaluate(() => {
-        const elementsToRemove = ['script', 'style', 'header', 'footer', '.ads', 'nav']
-        elementsToRemove.forEach(selector => {
-          document.querySelectorAll(selector).forEach(el => el.remove())
-        })
-        return document.body.innerText
+      const openapiContainer = await app.container.make('openai')
+
+      const chatCompletionResponse = await openapiContainer.chat.completions.create({
+        model: this.#model,
+        messages,
       })
 
-      await browser.close()
+      const { content } = chatCompletionResponse.choices[0].message
+      if (!content) {
+        summarizerJob.status = SummarizerJobStatus.FAILED
+        await summarizerJob.save()
 
-      const santizedContent = textContent.replace(/\s+/g, ' ').trim()
-
-      const chunkifiedContents = splitContentIntoChunks(santizedContent, 500)
-
-      const chunkSummaryResponse = await axios.post(
-        'https://api.openai.com/v1/chat/completions',
-        {
-          model: 'gpt-3.5-turbo',
-          messages: [
-            {
-              role: 'system',
-              content: 'You are a helpful assistant',
-            },
-            ...chunkifiedContents.map((chunkifiedContent) => ({
-              role: 'user',
-              content: `Please summarize this: ${chunkifiedContent}`,
-            })),
-            {
-              role: 'user',
-              content: 'Can you please refer to the previous summaries and make it shorter?'
-            },
-          ],
-        },
-        {
-          headers: {
-            'Authorization': `Bearer ${env.get('OPENAPI_API_KEY')}`,
-            'Content-Type': 'application/json',
-          },
-        }
-      )
-
-      const summary = chunkSummaryResponse.data.choices[0].message.content.trim()
+        return
+      }
 
       summarizerJob.status = SummarizerJobStatus.COMPLETED
-      summarizerJob.summary = summary
+      summarizerJob.summary = content.trim()
       await summarizerJob.save()
     } catch (error) {
       summarizerJob.status = SummarizerJobStatus.FAILED
       await summarizerJob.save()
-
-      await browser.close()
     }
   }
 }
