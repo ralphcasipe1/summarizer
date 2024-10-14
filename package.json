@@ -6,6 +6,7 @@
   "license": "UNLICENSED",
   "scripts": {
     "start": "node bin/server.js",
+    "start:worker": "node ace resque:start --worker",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
     "test": "node ace test",
