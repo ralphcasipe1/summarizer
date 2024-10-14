@@ -39,9 +39,15 @@ node ace migration:run
 ```
 
 ### 5. Run the Development Server
-Finally, start the development server:
+Start the development server:
 ```sh
 npm run dev
+```
+
+### 6. Run the job worker
+Finally, start the job worker:
+```sh
+npm run start:worker
 ```
 
 
