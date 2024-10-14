@@ -72,8 +72,6 @@ async function fetchContent(url: string) {
 }
 
 export default class WebpageCrawler extends BaseJob {
-  #model = 'gpt-3.5-turbo'
-
   async perform(url: string, id: number) {
     const summarizerJob = await SummarizerJob.findOrFail(id)
 
@@ -86,7 +84,7 @@ export default class WebpageCrawler extends BaseJob {
       const openapiContainer = await app.container.make('openai')
 
       const chatCompletionResponse = await openapiContainer.chat.completions.create({
-        model: this.#model,
+        model: 'gpt-3.5-turbo',
         messages,
       })
 
