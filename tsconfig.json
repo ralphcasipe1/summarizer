@@ -3,6 +3,7 @@
   "compilerOptions": {
     "rootDir": "./",
     "outDir": "./build",
+    "lib": ["ESNext", "DOM"],
     "paths": {
       "#jobs/*": ["./app/jobs/*.js"]
     }
