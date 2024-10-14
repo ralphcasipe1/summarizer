@@ -59,8 +59,8 @@
     "@adonisjs/redis": "^9.1.0",
     "@vinejs/vine": "^2.1.0",
     "adonis-resque": "^2.0.0-alpha.0",
-    "axios": "^1.7.7",
     "luxon": "^3.5.0",
+    "openai": "^4.67.3",
     "pg": "^8.13.0",
     "puppeteer": "^23.5.3",
     "reflect-metadata": "^0.2.2"
