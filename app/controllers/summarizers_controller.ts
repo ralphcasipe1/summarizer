@@ -38,7 +38,7 @@ export default class SummarizersController {
 
     if (!summarizerJob) {
       return response.notFound({
-        message: 'Summary with this `id` is not found.',
+        message: `Summarizer job with ID ${params.id} could not be found.`,
       })
     }
 
