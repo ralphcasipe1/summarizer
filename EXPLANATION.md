@@ -1,45 +1,57 @@
 # Motivation
-This would ease out the need to manually summarize the content of the page.
+This project automates the process of summarizing web pages, eliminating the need for manual summarization.
 
 # Technical Challenges
-- If the webpage does not follow the best practices for writing good semantics in HTML
-- When there's a lot of content in the web page
-- When there huge number of concurrent users
+- Some web pages may not follow best practices for semantic HTML, making content extraction harder.
+- Handling pages with a lot of content can be resource-intensive.
+- Managing a large number of concurrent users poses scaling and performance challenges.
 
 # Technical Decisions
-In this proof-of-concept, I chose to use the framework, AdonisJS v6. It gives me the headstart by not tweaking configurations and focus more on the functional requirements.
+For this proof-of-concept, I chose AdonisJS v6 because it provides a solid foundation without requiring extensive configuration, allowing me to focus on the functional requirements.
 
-I chose to use the Postgres as my database because it is the first support from the AdonisJS Framework
+I opted for PostgreSQL because it is well-supported in AdonisJS and provides robust data management.
 
-I chose to deal with TypeScript because it gives me confidence because of it's intellisense and it has the first-class support from AdonisJS
-
+ I chose TypeScript for its strong type system and IntelliSense support, which boosts development confidence and has first-class support in AdonisJS.
 
 # User Stories
-- As a user, I want to summarize the page given just the URL provided, so that it would save me time.
-- As a user, I want to monitor the status of summarization process, so that I am aware of it's status.
-- As a user, I want to retrive the processed summary, so that I would not wait longer when the summary is already previously processed.
+- As a user, I want to summarize a webpage by providing its URL, so that I can save time.
+- As a user, I want to monitor the summarization process, so that I know its status.
+- As a user, I want to retrieve a previously processed summary, so that I don't need to wait again.
 
 # Architectural Decision in Production
-In production, I will leverage the advantages of using cloud providers. Let's take the example of using AWS.
+In production, I plan to leverage cloud infrastructure, focusing on scalability, performance, and cost-efficiency. Here's the breakdown:
 
-1. The user's request will go through the API Gateway. This would help validate the request, do the **rate limiting**
-   1. In this regard, we will also need a load balancer to distribute the traffic
-   2. per user rate limiting: since this api is a public-facing api
-2. I will move out from the AdonisJS and split the core business logic into two services, namely:
-   1. **Web Scraper Service**: This would be responsible for fetching the contents and chunking the contents from the supplied URL.
-   2. **Summarization Service**: Calls OpenAI's API for the content summarization.
-3. Queueing the content processing: After fetching the content, we're going to pass this to a message queue:
-   1. Use Amazon MQ or SQS
-      1. This would process the incoming requests asynchronously
-      2. The queue would also serve as a buffer time, which is helpful for dealing with sudden spikes in traffic
-4. Observability
-   1. Use cloud watch
-   2. alerts: for high latency, errors, or service failures
-   3. auto-healing: leverage auto-healing mechanisms like restart failed, containers, to maintain system uptime
-5. persistence layer
-   1. dynamodb
-6. caching
-   1. redis
-7. cost optimization
-   1. autoscaling based on demand
+## API Gateway
+All user requests will be routed through an API Gateway for validation and rate limiting.
+
+### Load Balancer
+A load balancer will distribute traffic to ensure high availability and resilience.
+### Rate Limiting
+As this API is public-facing, individual rate limits will be enforced.
+
+
+## Modular architecture
+I plan to split the core business logic into two microservices:
+1. **Web Scraper Service**: This would be responsible for fetching the contents and chunking the contents from the supplied URL.
+2. **Summarization Service**: Calls OpenAI's API for the content summarization.
+
+## Using a message queue
+After content is fetched, it will be passed to a message queue (Amazon MQ or SQS)
+
+The queue handles requests asynchronously, allowing for scalable, non-blocking content processing.
+
+The queue acts as a buffer to manage traffic spikes.
+
+## Persistence Layer
+I will use **DynamoDB** for scalable, low-latency storage.
+
+## Caching
+I will use Redis to cache the summary for the frequently accessed data
+
+## Observability
+CloudWatch for monitoring performance and system health
+Alerts for high latency, errors, or service failures
+
+## Cost optimization
+Implement autoscaling and leveraging the openai's batch api endpoint
 
