@@ -20,6 +20,9 @@ export default class SummarizerJob extends BaseModel {
   @column()
   declare summary?: string
 
+  @column()
+  declare error?: string
+
   @column.dateTime({ autoCreate: true })
   declare createdAt: DateTime
 

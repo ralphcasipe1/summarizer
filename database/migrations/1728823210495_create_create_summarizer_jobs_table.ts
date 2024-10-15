@@ -12,6 +12,7 @@ export default class extends BaseSchema {
         .enum('status', Object.values(SummarizerJobStatus))
         .defaultTo(SummarizerJobStatus.PENDING)
       table.text('summary')
+      table.text('error')
       table.timestamp('created_at')
       table.timestamp('updated_at')
     })
