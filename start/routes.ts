@@ -8,7 +8,6 @@
 */
 import router from '@adonisjs/core/services/router'
 
-router
-  .resource('summarizations', '#controllers/summarizers_controller')
-  .apiOnly()
-  .only(['store', 'show'])
+const UsersController = () => import('#controllers/summarizers_controller')
+
+router.resource('summarizations', UsersController).apiOnly().only(['store', 'show'])
