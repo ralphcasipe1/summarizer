@@ -61,7 +61,7 @@ jobs:
           PORT: 3333
           HOST: localhost
           LOG_LEVEL: info
-          APP_KEY: test
+          APP_KEY: ${{ secrets.APP_KEY }}
           NODE_ENV: development
 
           DB_HOST: 127.0.0.1
