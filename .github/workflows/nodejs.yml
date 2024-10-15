@@ -28,18 +28,19 @@ jobs:
           POSTGRES_USERNAME: postgres
           POSTGRES_PASSWORD: password
           POSTGRES_DB: summarizer
-        options: >
-          --health-cmd="pg_isready -U postgres"
+        options: >-
+          --health-cmd pg_isready
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
+
 
       redis:
         image: redis
         ports:
           - 6379:6379
-        options: >
-          --health-cmd="redis-cli ping"
+        options: >-
+          --health-cmd "redis-cli ping"
           --health-interval 10s
           --health-timeout 5s
           --health-retries 5
