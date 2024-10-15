@@ -1,7 +1,7 @@
 import { defineConfig } from 'adonis-resque'
 
 const resqueConfig = defineConfig({
-  redisConnection: 'main',
+  redisConnection: 'queue',
   /**
    * run web & worker in same process, if enabled
    * You need to run command node ace resque:start if it is turned off
