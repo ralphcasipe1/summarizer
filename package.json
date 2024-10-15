@@ -9,7 +9,7 @@
     "start:worker": "node ace resque:start --worker",
     "build": "node ace build",
     "dev": "node ace serve --hmr",
-    "test": "node ace test",
+    "test": "node ace test --force-exit",
     "lint": "eslint .",
     "format": "prettier --write .",
     "typecheck": "tsc --noEmit"
