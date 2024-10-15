@@ -37,8 +37,14 @@ export default defineConfig({
     () => import('@adonisjs/lucid/database_provider'),
     () => import('@adonisjs/auth/auth_provider'),
     () => import('@adonisjs/redis/redis_provider'),
-    () => import('adonis-resque/providers/resque_provider'),
     () => import('#providers/openai_provider'),
+    // Explicitly sets the environment to ['web'], since it interrupts the events
+    // resulting to hanging process when running some of the commands like:
+    // `node ace migration:run`
+    {
+      file: () => import('adonis-resque/providers/resque_provider'),
+      environment: ['web'],
+    },
   ],
 
   /*
