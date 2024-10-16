@@ -1,10 +1,11 @@
 import openapi from 'openai'
 import puppeteer from 'puppeteer'
-
 import { BaseJob } from 'adonis-resque'
 
 import app from '@adonisjs/core/services/app'
 import redis from '@adonisjs/redis/services/main'
+import logger from '@adonisjs/core/services/logger'
+
 import SummarizerJob, { SummarizerJobStatus } from '#models/summarizer_job'
 
 type OpenAIMessageBody = {
@@ -22,6 +23,7 @@ export default class WebpageCrawler extends BaseJob {
     const summarizerJob = await SummarizerJob.find(jobId)
 
     if (!summarizerJob) {
+      logger.error({ jobId, url }, 'No summarizer job found')
       throw new Error('Failed')
     }
 
@@ -39,6 +41,8 @@ export default class WebpageCrawler extends BaseJob {
 
       const { content } = chatCompletionResponse.choices[0].message
       if (!content) {
+        logger.error({ jobId, url }, 'Summarization failed: OpenAI message content is empty')
+
         summarizerJob.status = SummarizerJobStatus.FAILED
         summarizerJob.error = 'Empty content found'
         await summarizerJob.save()
@@ -50,8 +54,12 @@ export default class WebpageCrawler extends BaseJob {
       summarizerJob.status = SummarizerJobStatus.COMPLETED
       summarizerJob.summary = summary
       await summarizerJob.save()
+      logger.info({ url, jobId }, 'Summarizer completed: Summary generated and stored')
+
       await this.#redisCache.set(url, summary)
+      logger.info({ url, jobId }, 'Summarizer completed: caching the url and the summary')
     } catch (error) {
+      logger.error({ jobId, url, error }, 'Summarization failed: Something went wrong')
       summarizerJob.status = SummarizerJobStatus.FAILED
       summarizerJob.error = 'Failed to summarize the content'
       await summarizerJob.save()
@@ -83,6 +91,7 @@ export default class WebpageCrawler extends BaseJob {
       return santizedContent
     } catch (error) {
       await browser.close()
+
       throw new Error('Unable to fetch and process the content.')
     }
   }
