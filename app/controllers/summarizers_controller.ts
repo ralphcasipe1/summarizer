@@ -5,7 +5,7 @@ import SummarizerJob, { SummarizerJobStatus } from '#models/summarizer_job'
 import { createSummarizerValidator } from '#validators/summarizer'
 
 export default class SummarizersController {
-  public async store({ request, response }: HttpContext) {
+  public async store({ request, response, logger }: HttpContext) {
     const { url } = await request.validateUsing(createSummarizerValidator)
 
     const redisCache = redis.connection('cache')
@@ -16,27 +16,35 @@ export default class SummarizersController {
       status: SummarizerJobStatus.PENDING,
     }
 
-    const summarizerJob = await SummarizerJob.create({
-      ...jobBody,
-      ...(summary
-        ? {
-            status: SummarizerJobStatus.COMPLETED,
-            summary,
-          }
-        : {}),
-    })
+    let summarizerJob: SummarizerJob
 
-    if (!summary) await WebpageCrawler.enqueue(url, summarizerJob.id)
+    if (summary) {
+      logger.info({ url }, `Cache of ${url} hit`)
+
+      summarizerJob = await SummarizerJob.create({
+        ...jobBody,
+        summary,
+        status: SummarizerJobStatus.COMPLETED,
+      })
+    } else {
+      logger.info({ url }, `Cache of ${url} not hit`)
+
+      summarizerJob = await SummarizerJob.create(jobBody)
+
+      await WebpageCrawler.enqueue(url, summarizerJob.id)
+    }
 
     return response.ok({
       result: summarizerJob,
     })
   }
 
-  public async show({ response, params }: HttpContext) {
+  public async show({ response, params, logger }: HttpContext) {
     const summarizerJob = await SummarizerJob.find(params.id)
 
     if (!summarizerJob) {
+      logger.warn({ jobId: params.id }, 'No summarizer job found')
+
       return response.notFound({
         message: `Summarizer job with ID ${params.id} could not be found.`,
       })
